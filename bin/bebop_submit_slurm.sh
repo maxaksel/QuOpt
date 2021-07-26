@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --job-name=quopt
-#SBATCH --account=QC_ERR_SIM
+#SBATCH --account=qc_err_sim
 ##SBATCH --partition=bdwall
 #SBATCH --partition=bdws
 #SBATCH --nodes=1
@@ -35,12 +35,13 @@ head -n 1 node_list > machinefile.$SLURM_JOBID
 #Add worker node to machinefile
 cat node_list >> machinefile.$SLURM_JOBID
 
-cmd="srun mpirun -np 36 ./main"
+cmd="srun mpirun -np 1 ./main"
 
 echo The command is: $cmd
 echo End PBS script information.
 echo -e "All further output is from the process being run and not the pbs script.\n$cmd\n\n"
 
+export OMP_NUM_THREADS=10
 export SLURM_HOSTFILE=machinefile.$SLURM_JOBID
 ls
 pwd
