@@ -330,17 +330,18 @@ int main(int argc, char** argv) {
   MPI_Get_processor_name(processor_name, &name_len);
 
   // Optimization hyperparameters
-  const int num_params = 81; // 18 -> 27 -> 36 -> 45 -> 54 -> 63 -> 72 -> 81
+  const int num_params = 45; // 18 -> 27 -> 36 -> 45 -> 54 -> 63 -> 72 -> 81
   int num_layers = num_params / 9 - 1; // derived from number of parameters
-  int num_initial_points = 10; // number of initial points to start from per subproblem
+  int num_initial_points = 1; // number of initial points to start from per subproblem (set to 1 if using multiple machines)
   const int circuit_number_min = pow(3, num_layers) * rank / size;
   const int circuit_number_max = pow(3, num_layers) * (rank + 1) / size;
 
   google::InitGoogleLogging(argv[0]);
 
-  // for (int circuit_number = circuit_number_min; circuit_number < circuit_number_max; circuit_number++) {
-  for (int circuit_number = 2460; circuit_number <= 2460; circuit_number++) {
+  for (int circuit_number = circuit_number_min; circuit_number < circuit_number_max; circuit_number++) {
+  // for (int circuit_number = 2460; circuit_number <= 2460; circuit_number++) {
     for (int run_index = 0; run_index < num_initial_points; run_index++) {
+      printf("Optimizing circuit %d on rank %d on machine %s (run id is %d)\n", circuit_number, rank, processor_name, run_index);
       // Initialize random starting point and print it
       double* opt_params = generate_initial_parameters(num_params); // this array will be updated at each iteration of Levenberg-Marquardt
       double initial_params[num_params];
@@ -354,7 +355,7 @@ int main(int argc, char** argv) {
 
       // Configure and run Levenberg-Marquardt nonlinear least squares solver
       Solver::Options options;
-      options.minimizer_progress_to_stdout = true;
+      // options.minimizer_progress_to_stdout = true;
       options.max_num_iterations = 200;
       options.linear_solver_type = ceres::DENSE_QR;
       options.function_tolerance = 1e-320;
@@ -367,7 +368,7 @@ int main(int argc, char** argv) {
 
       // Save (good) results to disk
       if (summary.final_cost <= 1e-10) {
-        std::cout << "Trying to output to a file..." << std::endl;
+        std::cout << "Success. Trying to output to a file..." << std::endl;
         char filename[255];
         FILE* file;
         sprintf(filename, "optout_%d_%d.txt", circuit_number, run_index);
@@ -386,6 +387,7 @@ int main(int argc, char** argv) {
     }
   }
 
+  printf("Rank %d is finished.\n", rank);
   // Finalize the MPI environment
   MPI_Finalize();
 
