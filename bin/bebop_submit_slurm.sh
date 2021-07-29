@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=quopt
+#SBATCH --job-name=quopt7
 #SBATCH --account=qc_err_sim
 #SBATCH --partition=bdwall
 ##SBATCH --partition=bdws
@@ -9,7 +9,7 @@
 #SBATCH --error=quopt.error
 #SBATCH --mail-user=mbowman@anl.gov # Optional if you require email
 #SBATCH --mail-type=ALL # Optional if you require email
-#SBATCH --time=5:00:00
+#SBATCH --time=24:00:00
 # Set up Environment
 export PATH=/soft/ceres-solver/2.0.0/conda/bin:$PATH
 # Test

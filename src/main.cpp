@@ -330,11 +330,13 @@ int main(int argc, char** argv) {
   MPI_Get_processor_name(processor_name, &name_len);
 
   // Optimization hyperparameters
-  const int num_params = 45; // 18 -> 27 -> 36 -> 45 -> 54 -> 63 -> 72 -> 81
+  const int num_params = 18; // 18 -> 27 -> 36 -> 45 -> 54 -> 63 -> 72 -> 81
   int num_layers = num_params / 9 - 1; // derived from number of parameters
   int num_initial_points = 1; // number of initial points to start from per subproblem (set to 1 if using multiple machines)
   const int circuit_number_min = pow(3, num_layers) * rank / size;
   const int circuit_number_max = pow(3, num_layers) * (rank + 1) / size;
+
+  printf("Optimizing for %d layers (%d parameters) with %d initial guesses per optimization problem.\n", num_layers, num_params, num_initial_points);
 
   google::InitGoogleLogging(argv[0]);
 
@@ -371,7 +373,7 @@ int main(int argc, char** argv) {
         std::cout << "Success. Trying to output to a file..." << std::endl;
         char filename[255];
         FILE* file;
-        sprintf(filename, "optout_%d_%d.txt", circuit_number, run_index);
+        sprintf(filename, "optout_%d_%s_%d.txt", circuit_number, processor_name, run_index);
         file = fopen(filename, "w");
         for (int i = 0; i < num_params - 1; i++) {
           fprintf(file, "%.50f, ", opt_params[i]);
