@@ -330,7 +330,7 @@ int main(int argc, char** argv) {
   MPI_Get_processor_name(processor_name, &name_len);
 
   // Optimization hyperparameters
-  const int num_params = 18; // 18 -> 27 -> 36 -> 45 -> 54 -> 63 -> 72 -> 81
+  const int num_params = 72; // 18 -> 27 -> 36 -> 45 -> 54 -> 63 -> 72 -> 81
   int num_layers = num_params / 9 - 1; // derived from number of parameters
   int num_initial_points = 1; // number of initial points to start from per subproblem (set to 1 if using multiple machines)
   const int circuit_number_min = pow(3, num_layers) * rank / size;
