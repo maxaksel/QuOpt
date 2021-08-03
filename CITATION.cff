@@ -1,0 +1,9 @@
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Bowman
+    given-names: Max Aksel
+    orcid: https://orcid.org/0000-0002-1288-7687
+title: "QuOpt Research Software"
+version: 1.0
+date-released: 2021-08-02

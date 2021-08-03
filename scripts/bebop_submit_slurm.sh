@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=quopt7
+#SBATCH --job-name=quopt5
 #SBATCH --account=qc_err_sim
 #SBATCH --partition=bdwall
 ##SBATCH --partition=bdws
@@ -21,7 +21,7 @@ echo -e "Master process running on: $HOSTNAME"
 echo -e "Directory is:  $PWD"
 # Put in a timestamp
 echo Starting executation at: `date`
-cmd="srun mpirun -np 36 ./main"
+cmd="srun mpirun -np 36 ../bin/main"
 echo The command is: $cmd
 echo End PBS script information.
 echo -e "All further output is from the process being run and not the pbs script.\n$cmd\n\n"
