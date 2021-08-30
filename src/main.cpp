@@ -4,7 +4,7 @@
   target unitary matrix using the Levenberg-Marquardt nonlinear least squares
   optimization method. See README.md for additional information.
   @file main.cpp
-  @version 0.0.1 July 26th, 2021
+  @version 3.0 August 29th, 2021
   @author Max Aksel Bowman (mbowman@anl.gov)
 */
 
@@ -167,6 +167,8 @@ Matrix<ccomplex<T>, 8, 8> linear_mq_gate(int gate_type) {
     Matrix<ccomplex<T>, 8, 8> unitary;
     ccomplex<T> one = ccomplex<T>((T)(1.0), (T)(0.0));
     ccomplex<T> zero = ccomplex<T>((T)(0.0), (T)(0.0));
+    ccomplex<T> cvp = ccomplex<T>((T)(0.5), (T)(0.5));
+    ccomplex<T> cvn = ccomplex<T>((T)(0.5), (T)(-0.5));
 
     if (gate_type == 0) {
         // Apply a CNOT gate between qubits 0 and 1 on a three-qubit circuit
@@ -201,13 +203,35 @@ Matrix<ccomplex<T>, 8, 8> linear_mq_gate(int gate_type) {
             zero, zero, zero, zero, zero, zero, one, zero,
             zero, one, zero, zero, zero, zero, zero, zero;
     }
+    else if (gate_type == 3) {
+      // Apply a CV gate between qubits 0 and 1 on a three-qubit circuit
+      unitary << one, zero, zero, zero, zero, zero, zero, zero,
+          zero, cvp, zero, cvn, zero, zero, zero, zero,
+          zero, zero, one, zero, zero, zero, zero, zero,
+          zero, cvn, zero, cvp, zero, zero, zero, zero,
+          zero, zero, zero, zero, one, zero, zero, zero,
+          zero, zero, zero, zero, zero, cvp, zero, cvn,
+          zero, zero, zero, zero, zero, zero, one, zero,
+          zero, zero, zero, zero, zero, cvn, zero, cvp;
+    }
+    else if (gate_type == 4) {
+      // Apply a CV gate between qubits 0 and 2 on a three-qubit circuit
+      unitary << one, zero, zero, zero, zero, zero, zero, zero,
+          zero, cvp, zero, zero, zero, cvn, zero, zero,
+          zero, zero, one, zero, zero, zero, zero, zero,
+          zero, zero, zero, cvp, zero, zero, zero, cvn,
+          zero, zero, zero, zero, one, zero, zero, zero,
+          zero, cvn, zero, zero, zero, cvp, zero, zero,
+          zero, zero, zero, zero, zero, zero, one, zero,
+          zero, zero, zero, cvn, zero, zero, zero, cvp;
+    }
 
     return unitary;
 }
 
 template <typename T>
-Matrix<ccomplex<T>, 8, 8> build_unitary(int circuit_number, int num_layers, const T* const params) {
-    const int num_params = (num_layers + 1) * 9;
+Matrix<ccomplex<T>, 8, 8> build_unitary(int circuit_number, const int num_params, int num_mq_ops, const T* const params) {
+    const int num_layers = num_params / 9 - 1;
     ccomplex<T> one = ccomplex<T>((T)(1.0), (T)(0.0));
     ccomplex<T> zero = ccomplex<T>((T)(0.0), (T)(0.0));
 
@@ -231,16 +255,19 @@ Matrix<ccomplex<T>, 8, 8> build_unitary(int circuit_number, int num_layers, cons
         max_exponent = 0;
     }
     else {
-        max_exponent = (int)(log(circuit_number) / log(3));
+        max_exponent = (int)(log(circuit_number) / log(num_mq_ops));
     }
     max_exponent = std::max(max_exponent, num_layers - 1); // add "padding" for leading 0-type multi-qubit operations
 
     int instruction;
     int instruction_index = 0;
+    // std::cout << "BUILDING CIRCUIT " << circuit_number << " " << max_exponent << " | ";
+
     for (int base_exponent = max_exponent; base_exponent >= 0; base_exponent--) {
         // Extract next multi-qubit instruction from the circuit number
-        instruction = (int)(circuit_number / pow(3, base_exponent));
-        circuit_number = circuit_number % int(pow(3, base_exponent));
+        instruction = (int)(circuit_number / pow(num_mq_ops, base_exponent));
+        circuit_number = circuit_number % (int)(pow(num_mq_ops, base_exponent));
+        // std::cout << instruction << ", ";
 
         // Add next layer
         unitary *= linear_mq_gate<T>(instruction); // add multi-qubit operation
@@ -252,22 +279,25 @@ Matrix<ccomplex<T>, 8, 8> build_unitary(int circuit_number, int num_layers, cons
         }
         instruction_index++;
     }
+    // std::cout << "DONE" << std::endl;
 
     return unitary;
 }
 
 struct ResidualFunctor {
     int circuit_number;
-    int num_layers;
+    int num_params;
+    int num_mq_ops;
 
-    ResidualFunctor(int cn, int nl) {
+    ResidualFunctor(int cn, int np, int nmo) {
         circuit_number = cn;
-        num_layers = nl;
+        num_params = np;
+        num_mq_ops = nmo;
     }
 
     template <typename T>
     bool operator()(const T* const params, T* residual) const {
-        Matrix<ccomplex<T>, 8, 8> cunitary = build_unitary(circuit_number, num_layers, params);
+        Matrix<ccomplex<T>, 8, 8> cunitary = build_unitary(circuit_number, num_params, num_mq_ops, params);
         ccomplex<T> one = ccomplex<T>((T)(1.0), (T)(0.0));
         ccomplex<T> zero = ccomplex<T>((T)(0.0), (T)(0.0));
 
@@ -296,13 +326,6 @@ void print_array(T* arr, int length) {
   }
 }
 
-/**
-  Returns a pointer to an array of doubles. Array contains random parameters
-  used as a starting point for the Levenberg-Marquardt optimization algorithm.
-  @param an integer number of parameters to generate (should be a multiple of 3).
-  @return a pointer to an array of doubles. Random parameters are of form
-          [theta_1, phi_1, lambda_1, ... theta_n, phi_n, lambda_n]
-*/
 double* generate_initial_parameters(int num) {
   double* random_array = new double[num];
   std::default_random_engine generator(unsigned(time(nullptr)));
@@ -330,18 +353,18 @@ int main(int argc, char** argv) {
   MPI_Get_processor_name(processor_name, &name_len);
 
   // Optimization hyperparameters
-  const int num_params = 72; // 18 -> 27 -> 36 -> 45 -> 54 -> 63 -> 72 -> 81
+  const int num_params = 27; // 18 -> 27 -> 36 -> 45 -> 54 -> 63 -> 72 -> 81
+  const int num_mq_ops = 5;
   int num_layers = num_params / 9 - 1; // derived from number of parameters
   int num_initial_points = 1; // number of initial points to start from per subproblem (set to 1 if using multiple machines)
-  const int circuit_number_min = pow(3, num_layers) * rank / size;
-  const int circuit_number_max = pow(3, num_layers) * (rank + 1) / size;
+  const int circuit_number_min = pow(num_mq_ops, num_layers) * rank / size;
+  const int circuit_number_max = pow(num_mq_ops, num_layers) * (rank + 1) / size;
 
-  printf("Optimizing for %d layers (%d parameters) with %d initial guesses per optimization problem.\n", num_layers, num_params, num_initial_points);
+  printf("Optimizing for %d layers (%d parameters, %d mq ops) with %d initial guesses per optimization problem. Circuit numbers range from %d to %d.\n", num_layers, num_params, num_mq_ops, num_initial_points, circuit_number_min, circuit_number_max);
 
   google::InitGoogleLogging(argv[0]);
 
   for (int circuit_number = circuit_number_min; circuit_number < circuit_number_max; circuit_number++) {
-  // for (int circuit_number = 2460; circuit_number <= 2460; circuit_number++) {
     for (int run_index = 0; run_index < num_initial_points; run_index++) {
       printf("Optimizing circuit %d on rank %d on machine %s (run id is %d)\n", circuit_number, rank, processor_name, run_index);
       // Initialize random starting point and print it
@@ -350,9 +373,9 @@ int main(int argc, char** argv) {
       memcpy(initial_params, opt_params, sizeof(initial_params));
 
       // Build nonlinear least squares problem
-      Matrix<ccomplex<double>, 8, 8> cunitary = build_unitary(circuit_number, num_layers, opt_params);
+      Matrix<ccomplex<double>, 8, 8> cunitary = build_unitary(circuit_number, num_params, num_mq_ops, opt_params);
       Problem problem;
-      CostFunction* cost_function = new AutoDiffCostFunction<ResidualFunctor, 128, num_params>(new ResidualFunctor(circuit_number, num_layers));
+      CostFunction* cost_function = new AutoDiffCostFunction<ResidualFunctor, 128, num_params>(new ResidualFunctor(circuit_number, num_params, num_mq_ops));
       problem.AddResidualBlock(cost_function, nullptr, opt_params);
 
       // Configure and run Levenberg-Marquardt nonlinear least squares solver
