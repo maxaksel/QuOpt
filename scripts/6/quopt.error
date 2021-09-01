@@ -1,0 +1,13 @@
+bdw-0445.30866PSM2 can't open hfi unit: 0 (err=23)
+bdw-0445.30868PSM2 can't open hfi unit: 0 (err=23)
+Abort(1615503) on node 1 (rank 1 in comm 0): Fatal error in PMPI_Init: Other MPI error, error stack:
+MPIR_Init_thread(136)........: 
+MPID_Init(1138)..............: 
+MPIDI_OFI_mpi_init_hook(1439): 
+create_endpoint(2083)........: OFI endpoint open failed (ofi_init.c:2083:create_endpoint:Invalid argument)
+Abort(1615503) on node 11 (rank 11 in comm 0): Fatal error in PMPI_Init: Other MPI error, error stack:
+MPIR_Init_thread(136)........: 
+MPID_Init(1138)..............: 
+MPIDI_OFI_mpi_init_hook(1439): 
+create_endpoint(2083)........: OFI endpoint open failed (ofi_init.c:2083:create_endpoint:Invalid argument)
+srun: error: bdw-0600: task 7: Exited with exit code 143

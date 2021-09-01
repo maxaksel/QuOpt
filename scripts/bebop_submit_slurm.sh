@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=quopt5
+#SBATCH --job-name=quopt6
 #SBATCH --account=qc_err_sim
 #SBATCH --partition=bdwall
 ##SBATCH --partition=bdws
